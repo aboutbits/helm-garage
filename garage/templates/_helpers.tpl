@@ -48,10 +48,12 @@ Name of the ServiceAccount to use.
 {{- end }}
 
 {{/*
-Stable per-release RPC secret (inter-node clustering auth; loopback-only on a
-single node). `lookup` is used so that on `helm upgrade` we keep the previously
-generated value instead of rotating it (which would orphan the existing
-single-node cluster layout). The admin_token, by contrast, is a required,
+Auto-generated RPC secret (inter-node clustering auth; loopback-only on a single
+node, so it is never consumed externally). `lookup` reuses the previously stored
+value on `helm upgrade` to avoid a needless Secret diff — this is churn
+avoidance, not a correctness requirement: the node's identity and cluster layout
+live in the metadata volume, independent of this secret, so regenerating it does
+not lose data or orphan the layout. The admin_token, by contrast, is a required,
 operator-provided value (see admin.token) so it is known up front.
 */}}
 {{- define "garage.rpcSecret" -}}
