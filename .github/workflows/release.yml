@@ -1,0 +1,48 @@
+name: Release Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (eg: x.x.x)"
+        type: string
+        required: true
+
+env:
+  CHART_NAME: garage
+  OCI_IMAGE: oci://ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      - uses: aboutbits/github-actions-base/git-setup@v2
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 3.17.1
+      - name: Set version of Chart.yaml file
+        run: yq -i '.version = "${{ github.event.inputs.version }}"' ${{ env.CHART_NAME }}/Chart.yaml
+        shell: bash
+      - name: Package Helm chart
+        run: helm package ${{ env.CHART_NAME }}
+        shell: bash
+      - name: Push to OCI registry
+        run: |
+          helm registry login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          helm push ${{ env.CHART_NAME }}-${{ github.event.inputs.version }}.tgz ${{ env.OCI_IMAGE }}
+        shell: bash
+      - uses: aboutbits/github-actions-base/git-commit-and-push-all@v2
+        with:
+          message: '${{ github.event.inputs.version }}'
+      - uses: aboutbits/github-actions-base/git-create-or-update-tag@v2
+        with:
+          tag-name: 'v${{ github.event.inputs.version }}'
+      - uses: aboutbits/github-actions-base/github-create-release@v2
+        with:
+          tag-name: 'v${{ github.event.inputs.version }}'
+          release-notes-generation: 'true'

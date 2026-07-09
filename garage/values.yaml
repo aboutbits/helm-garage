@@ -1,0 +1,139 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: dxflrs/garage
+  tag: v2.3.0
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+garage:
+  dbEngine: lmdb
+  blockSize: "1048576"
+  compressionLevel: "1"
+  metadataAutoSnapshotInterval: ""
+  additionalTopLevelConfig: ""
+
+s3:
+  region: garage
+  rootDomain: ".s3.garage"
+
+admin:
+  enabled: true
+  port: 3903
+  token: ""
+
+bootstrap:
+  enabled: false
+  defaultBucket: default-bucket
+  accessKey: ""
+  secretKey: ""
+
+service:
+  type: ClusterIP
+  s3:
+    port: 3900
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  labels: {}
+  hosts:
+    - host: s3.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+httpRoute:
+  enabled: false
+  parentRefs: []
+  hostnames: []
+  annotations: {}
+  labels: {}
+  matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+persistence:
+  meta:
+    storageClassName: local-path
+    size: 2Gi
+    accessModes:
+      - ReadWriteOnce
+  data:
+    storageClassName: local-path
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+priorityClassName: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+probes:
+  liveness:
+    httpGet:
+      path: /health
+      port: admin
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 6
+  readiness:
+    httpGet:
+      path: /health
+      port: admin
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+environment: {}
+
+extraVolumes: []
+extraVolumeMounts: []
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+monitoring:
+  metrics:
+    enabled: false
+    serviceMonitor:
+      enabled: false
+      path: /metrics
+      labels: {}
+      interval: 15s
+      scheme: http
+      tlsConfig: {}
+      scrapeTimeout: 10s
+      relabelings: []

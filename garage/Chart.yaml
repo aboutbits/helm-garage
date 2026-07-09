@@ -1,0 +1,13 @@
+apiVersion: v2
+name: garage
+description: AboutBits single-node Garage (S3-compatible object storage) Helm chart
+type: application
+version: 0.1.0
+appVersion: "v2.3.0"
+keywords:
+  - garage
+  - s3
+  - object-storage
+home: https://garagehq.deuxfleurs.fr
+sources:
+  - https://git.deuxfleurs.fr/Deuxfleurs/garage

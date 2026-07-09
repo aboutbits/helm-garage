@@ -1,0 +1,258 @@
+# Reference values for the garage chart.
+#
+# This chart deploys a single-node Garage (S3-compatible object store): one
+# StatefulSet replica, replication_factor=1, no node discovery/clustering. It
+# keeps the upstream chart's security hardening and optional Prometheus
+# monitoring, and adds an optional first-boot bucket + access key bootstrap.
+
+# -- Override the name of the chart
+nameOverride: ""
+# -- Override the full name of the chart
+fullnameOverride: ""
+
+# -- Container image configuration
+image:
+  # -- Repository of the container image
+  repository: dxflrs/garage
+  # -- Tag of the container image
+  tag: v2.3.0
+  # -- Image pull policy. Accepted values: Always, Never, IfNotPresent
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Garage configuration. These values are rendered into garage.toml.
+garage:
+  # -- Metadata database engine. https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/#db_engine
+  dbEngine: lmdb
+  # -- Block size in bytes (default 1MB). https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/#block_size
+  blockSize: "1048576"
+  # -- zstd compression level of stored blocks (integer 1-19), or "none" to
+  # disable. https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/#compression_level
+  compressionLevel: "1"
+  # -- If set, Garage snapshots the metadata DB at this interval into the metadata dir.
+  metadataAutoSnapshotInterval: ""
+  # -- Additional lines appended verbatim to garage.toml.
+  additionalTopLevelConfig: ""
+
+# -- S3 API settings. Garage only speaks plain HTTP; terminate TLS at the
+# ingress/gateway if exposing it outside the cluster.
+s3:
+  # -- S3 region name Garage responds to. Arbitrary, but the client must sign
+  # with the same value (e.g. AWS_DEFAULT_REGION=garage) or requests fail with
+  # AuthorizationHeaderMalformed. Change only if a tool hardcodes a region.
+  region: garage
+  # -- Domain suffix (with leading dot) for virtual-hosted-style bucket access
+  # (<bucket>.<rootDomain>). Only relevant when exposing Garage externally with
+  # bucket-name-in-hostname URLs; requires wildcard DNS and a matching ingress
+  # host. Unused for in-cluster / path-style clients (AWS_S3_FORCE_PATH_STYLE=true).
+  rootDomain: ".s3.garage"
+
+# -- Admin API: bucket/key management, health checks, and Prometheus metrics.
+# Kept ClusterIP-only; never exposed via ingress.
+admin:
+  # -- Enable the admin API. Required for the /health probes and monitoring below.
+  enabled: true
+  # -- Port the admin API listens on inside the container.
+  port: 3903
+  # -- Bearer token protecting the admin API. Required when admin.enabled=true.
+  # Set your own (any sufficiently random string) so it is known up front for
+  # managing buckets/keys via the admin API. Prefer --set / Terraform over
+  # committing it to git.
+  token: ""
+
+# -- Optional bootstrap of a single default bucket + access key on first boot,
+# via `garage server --default-bucket`. Disabled by default: most deployments
+# provision buckets/keys out-of-band (Admin API, Terraform, ...). This is a
+# one-time first-boot action; later buckets/keys or key rotation go through the
+# Admin API, not values.
+bootstrap:
+  # -- Enable first-boot bucket + key creation.
+  enabled: false
+  # -- Name of the single bucket auto-created on first boot.
+  defaultBucket: default-bucket
+  # -- Access key ID for the default bucket. Required when bootstrap.enabled=true.
+  # Must start with "GK" by Garage convention (GK + 16 hex chars).
+  accessKey: ""
+  # -- Secret access key for the default bucket. Required when bootstrap.enabled=true.
+  secretKey: ""
+
+# -- Service configuration (ClusterIP by default; this is the in-cluster S3 endpoint).
+service:
+  # -- Kubernetes Service type.
+  type: ClusterIP
+  s3:
+    # -- Port the S3 API is exposed on.
+    port: 3900
+  # -- Extra annotations for the Service.
+  annotations: {}
+
+# -- Classic Ingress for the S3 API (networking.k8s.io/v1; requires an ingress
+# controller). Only needed to reach Garage from OUTSIDE the cluster. In-cluster
+# clients use the Service directly. Enable AT MOST ONE of ingress / httpRoute.
+ingress:
+  # -- Enable the Ingress.
+  enabled: false
+  # -- Ingress class name.
+  className: ""
+  # -- Ingress annotations.
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt
+  # -- Extra labels for the Ingress.
+  labels: {}
+  # -- Ingress hosts configuration.
+  hosts:
+    - host: s3.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration.
+  tls: []
+  #  - secretName: garage-tls
+  #    hosts:
+  #      - s3.example.com
+
+# -- Gateway API HTTPRoute for the S3 API (gateway.networking.k8s.io/v1) — the
+# modern alternative to ingress. Attaches to an existing Gateway via parentRefs
+# (the Gateway itself is shared infra managed outside this chart). Requires the
+# Gateway API CRDs installed. Enable AT MOST ONE of ingress / httpRoute.
+httpRoute:
+  # -- Enable the HTTPRoute.
+  enabled: false
+  # -- Gateway(s) this route attaches to. Required when httpRoute.enabled=true.
+  parentRefs: []
+  #  - name: my-gateway
+  #    namespace: gateway-system
+  #    sectionName: https
+  # -- Hostnames this route matches. Empty = match all hostnames on the Gateway.
+  hostnames: []
+  #  - s3.example.com
+  # -- HTTPRoute annotations.
+  annotations: {}
+  # -- Extra labels for the HTTPRoute.
+  labels: {}
+  # -- Path matches for the route.
+  matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+# -- Persistent storage. Single-node with replication_factor=1: there is no
+# in-cluster replica, so durability comes from the underlying volumes and their
+# backups. Make sure both the meta and data volumes are covered by the node's
+# backup/snapshot schedule (e.g. daily disk snapshots).
+persistence:
+  # -- Metadata volume (LMDB database, indexes).
+  meta:
+    storageClassName: local-path
+    size: 2Gi
+    accessModes:
+      - ReadWriteOnce
+  # -- Data volume (object blocks).
+  data:
+    storageClassName: local-path
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+
+# -- Resource requests and limits. Starting point for a small single-node
+# deployment; tune to your workload. LMDB benefits from memory for its page
+# cache. No CPU limit by default to avoid throttling under bursty S3 traffic.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# -- Node selector for pod scheduling.
+nodeSelector: {}
+# -- Tolerations for pod scheduling.
+tolerations: []
+# -- Affinity rules for pod scheduling.
+affinity: {}
+
+# -- Optional priority class name to assign to the pod.
+priorityClassName: ""
+
+# -- Extra annotations for the pod.
+podAnnotations: {}
+# -- Extra labels for the pod.
+podLabels: {}
+
+# -- Pod-level security context.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+# -- Container-level hardening. If a custom image needs to write outside the
+# mounted meta/data dirs, add a writable volume via extraVolumes/extraVolumeMounts
+# rather than loosening this.
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# -- Liveness/readiness probes. Default to the admin API's /health endpoint
+# (200 only when the node can serve requests). NOTE: requires admin.enabled=true.
+# If you disable the admin API, switch these to a tcpSocket check on the `s3` port.
+probes:
+  liveness:
+    httpGet:
+      path: /health
+      port: admin
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 6
+  readiness:
+    httpGet:
+      path: /health
+      port: admin
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# -- Extra environment variables for the garage container.
+environment: {}
+
+# -- Extra volumes, e.g. for custom TLS trust or a writable scratch dir.
+extraVolumes: []
+# -- Extra volume mounts matching extraVolumes.
+extraVolumeMounts: []
+
+# -- Service account configuration. Not required for single-node operation (no
+# Kubernetes API access needed); off by default.
+serviceAccount:
+  # -- Create a ServiceAccount for the pod.
+  create: false
+  # -- Annotations for the ServiceAccount.
+  annotations: {}
+  # -- Name of the ServiceAccount (generated from the fullname template if empty).
+  name: ""
+
+# -- Prometheus monitoring (requires admin.enabled=true).
+monitoring:
+  metrics:
+    # -- Expose the admin API's Prometheus metrics on a separate headless Service.
+    enabled: false
+    serviceMonitor:
+      # -- Create a ServiceMonitor CRD for a prometheus-operator setup.
+      enabled: false
+      # -- Metrics path to scrape.
+      path: /metrics
+      # -- Extra labels for the ServiceMonitor.
+      labels: {}
+      # -- Scrape interval.
+      interval: 15s
+      # -- Scrape scheme.
+      scheme: http
+      # -- TLS config for scraping.
+      tlsConfig: {}
+      # -- Scrape timeout.
+      scrapeTimeout: 10s
+      # -- Metric relabeling rules.
+      relabelings: []

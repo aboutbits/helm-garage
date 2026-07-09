@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "garage.fullname" . }}
+  labels:
+    {{- include "garage.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  # Not headless: single-node Garage has no peers to discover via pod DNS, so
+  # this plain ClusterIP Service is used both as the StatefulSet's
+  # `serviceName` and as the address clients connect to for the S3 API.
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "garage.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: s3
+      port: {{ .Values.service.s3.port }}
+      targetPort: s3
+    {{- if .Values.admin.enabled }}
+    - name: admin
+      port: {{ .Values.admin.port }}
+      targetPort: admin
+    {{- end }}
+{{- if and .Values.admin.enabled .Values.monitoring.metrics.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "garage.fullname" . }}-metrics
+  labels:
+    {{- include "garage.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: {{ .Values.admin.port }}
+      targetPort: admin
+  selector:
+    {{- include "garage.selectorLabels" . | nindent 4 }}
+{{- end }}

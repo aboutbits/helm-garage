@@ -1,0 +1,53 @@
+Garage single-node deployment "{{ include "garage.fullname" . }}" is starting up.
+
+{{- if .Values.bootstrap.enabled }}
+
+It bootstraps itself on first boot via `garage server --single-node --default-bucket`
+(no manual layout/bucket setup needed). This is a one-time bootstrap: adding a
+second bucket or rotating the default key later means calling the Admin API
+directly, not editing values.yaml.
+
+Bucket:      {{ .Values.bootstrap.defaultBucket }}
+Access key:  (value of bootstrap.accessKey in your values)
+Secret key:  (value of bootstrap.secretKey in your values)
+{{- else }}
+
+No bucket/key is auto-created (bootstrap.enabled=false). Create buckets and
+keys yourself via the Admin API or the `garage` CLI, e.g.:
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout assign -z dc1 -c 1G <node-id>
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout apply --version 1
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket create <bucket-name>
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage key create <key-name>
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket allow --read --write --owner <bucket-name> --key <key-name>
+{{- end }}
+
+S3 endpoint (from inside the cluster):
+  http://{{ include "garage.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.s3.port }}
+
+Region:      {{ .Values.s3.region }}
+
+{{- if .Values.ingress.enabled }}
+
+External S3 endpoint (via Ingress):
+{{- range .Values.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.httpRoute.enabled }}
+
+External S3 endpoint (via Gateway API HTTPRoute):
+{{- if .Values.httpRoute.hostnames }}
+{{- range .Values.httpRoute.hostnames }}
+  https://{{ . }}/
+{{- end }}
+{{- else }}
+  (matches all hostnames on the referenced Gateway)
+{{- end }}
+{{- end }}
+
+Check status:
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage status
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket list
