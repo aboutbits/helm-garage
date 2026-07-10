@@ -38,6 +38,7 @@ service:
 
 ingress:
   enabled: false
+  name: ""
   className: ""
   annotations: {}
   labels: {}
@@ -50,6 +51,7 @@ ingress:
 
 httpRoute:
   enabled: false
+  name: ""
   parentRefs: []
   hostnames: []
   annotations: {}

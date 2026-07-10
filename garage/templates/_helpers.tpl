@@ -41,10 +41,26 @@ Name of the ServiceAccount to use.
 */}}
 {{- define "garage.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "garage.fullname" .) .Values.serviceAccount.name }}
+{{- $baseName := .Values.serviceAccount.name | default (printf "sa-%s" (include "garage.fullname" .)) -}}
+{{- $baseName | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
+{{- end }}
+
+{{/*
+Names for the ingress / HTTPRoute objects (prefixed for readability, overridable
+via .Values.<kind>.name). These name the routing object only — the backend still
+targets the Service (garage.fullname).
+*/}}
+{{- define "garage.ingressName" -}}
+{{- $baseName := .Values.ingress.name | default (printf "ingress-%s" (include "garage.fullname" .)) -}}
+{{- $baseName | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "garage.httpRouteName" -}}
+{{- $baseName := .Values.httpRoute.name | default (printf "httproute-%s" (include "garage.fullname" .)) -}}
+{{- $baseName | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*

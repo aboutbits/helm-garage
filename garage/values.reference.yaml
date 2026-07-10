@@ -94,6 +94,8 @@ service:
 ingress:
   # -- Enable the Ingress.
   enabled: false
+  # -- Name of the Ingress object. Defaults to ingress-<fullname> when empty.
+  name: ""
   # -- Ingress class name.
   className: ""
   # -- Ingress annotations.
