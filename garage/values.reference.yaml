@@ -122,6 +122,8 @@ ingress:
 httpRoute:
   # -- Enable the HTTPRoute.
   enabled: false
+  # -- Name of the HTTPRoute object. Defaults to httproute-<fullname> when empty.
+  name: ""
   # -- Gateway(s) this route attaches to. Required when httpRoute.enabled=true.
   parentRefs: []
   #  - name: my-gateway
