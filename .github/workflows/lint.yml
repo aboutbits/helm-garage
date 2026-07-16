@@ -1,0 +1,23 @@
+name: Lint Chart
+
+on:
+  pull_request:
+
+env:
+  CHART_NAME: garage
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: 4.2.3
+      # admin.token is a required value; a dummy is passed so all templates
+      # render during linting instead of being skipped with a warning.
+      - name: Lint Helm chart
+        run: helm lint ${{ env.CHART_NAME }} --strict --set admin.token=ci-lint-only
+        shell: bash
