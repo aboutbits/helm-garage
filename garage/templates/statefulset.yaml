@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "garage.fullname" . }}
+  labels:
+    {{- include "garage.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "garage.fullname" . }}
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      {{- include "garage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "garage.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "garage.serviceAccountName" . }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: garage
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /garage
+            - server
+            - --single-node
+            {{- if .Values.bootstrap.enabled }}
+            - --default-bucket
+            {{- end }}
+          {{- if or .Values.bootstrap.enabled .Values.environment }}
+          env:
+            {{- if .Values.bootstrap.enabled }}
+            - name: GARAGE_DEFAULT_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "garage.fullname" . }}
+                  key: default_access_key
+            - name: GARAGE_DEFAULT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "garage.fullname" . }}
+                  key: default_secret_key
+            - name: GARAGE_DEFAULT_BUCKET
+              value: {{ .Values.bootstrap.defaultBucket | quote }}
+            {{- end }}
+            {{- with .Values.environment }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: s3
+              containerPort: {{ .Values.service.s3.port }}
+            - name: rpc
+              containerPort: 3901
+            - name: admin
+              containerPort: {{ .Values.admin.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/garage.toml
+              subPath: garage.toml
+              readOnly: true
+            - name: meta
+              mountPath: /var/lib/garage/meta
+            - name: data
+              mountPath: /var/lib/garage/data
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "garage.fullname" . }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: meta
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.meta.accessModes | nindent 10 }}
+        storageClassName: {{ .Values.persistence.meta.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.meta.size }}
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.data.accessModes | nindent 10 }}
+        storageClassName: {{ .Values.persistence.data.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.data.size }}
