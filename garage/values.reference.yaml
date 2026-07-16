@@ -50,13 +50,12 @@ s3:
   rootDomain: ".s3.garage"
 
 # -- Admin API: bucket/key management, health checks, and Prometheus metrics.
+# Always enabled — the /health probes and monitoring below depend on it.
 # Kept ClusterIP-only; never exposed via ingress.
 admin:
-  # -- Enable the admin API. Required for the /health probes and monitoring below.
-  enabled: true
   # -- Port the admin API listens on inside the container.
   port: 3903
-  # -- Bearer token protecting the admin API. Required when admin.enabled=true.
+  # -- Bearer token protecting the admin API. Required.
   # Set your own (any sufficiently random string) so it is known up front for
   # managing buckets/keys via the admin API. Prefer --set / Terraform over
   # committing it to git.
@@ -203,7 +202,7 @@ securityContext:
   readOnlyRootFilesystem: true
 
 # -- Liveness/readiness probes. Default to the admin API's /health endpoint
-# (200 only when the node can serve requests). NOTE: requires admin.enabled=true.
+# (200 only when the node can serve requests), served by the admin API.
 # If you disable the admin API, switch these to a tcpSocket check on the `s3` port.
 probes:
   liveness:
@@ -238,7 +237,7 @@ serviceAccount:
   # -- Name of the ServiceAccount (generated from the fullname template if empty).
   name: ""
 
-# -- Prometheus monitoring (requires admin.enabled=true).
+# -- Prometheus monitoring (scrapes the admin API port).
 monitoring:
   metrics:
     # -- Expose the admin API's Prometheus metrics on a separate headless Service.

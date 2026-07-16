@@ -19,12 +19,10 @@ spec:
     - name: s3
       port: {{ .Values.service.s3.port }}
       targetPort: s3
-    {{- if .Values.admin.enabled }}
     - name: admin
       port: {{ .Values.admin.port }}
       targetPort: admin
-    {{- end }}
-{{- if and .Values.admin.enabled .Values.monitoring.metrics.enabled }}
+{{- if .Values.monitoring.metrics.enabled }}
 ---
 apiVersion: v1
 kind: Service

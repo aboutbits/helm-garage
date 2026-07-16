@@ -83,10 +83,8 @@ spec:
               containerPort: {{ .Values.service.s3.port }}
             - name: rpc
               containerPort: 3901
-            {{- if .Values.admin.enabled }}
             - name: admin
               containerPort: {{ .Values.admin.port }}
-            {{- end }}
           volumeMounts:
             - name: config
               mountPath: /etc/garage.toml

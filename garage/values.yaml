@@ -20,7 +20,6 @@ s3:
   rootDomain: ".s3.garage"
 
 admin:
-  enabled: true
   port: 3903
   token: ""
 
