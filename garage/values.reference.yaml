@@ -107,7 +107,7 @@ ingress:
     - host: s3.example.com
       paths:
         - path: /
-          pathType: Prefix
+          pathType: ImplementationSpecific
   # -- TLS configuration.
   tls: []
   #  - secretName: garage-tls

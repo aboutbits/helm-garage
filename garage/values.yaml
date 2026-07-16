@@ -45,7 +45,7 @@ ingress:
     - host: s3.example.com
       paths:
         - path: /
-          pathType: Prefix
+          pathType: ImplementationSpecific
   tls: []
 
 httpRoute:
