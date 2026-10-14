@@ -3,7 +3,7 @@ fullnameOverride: ""
 
 image:
   repository: dxflrs/garage
-  tag: v2.3.0
+  tag: v2.4.1
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

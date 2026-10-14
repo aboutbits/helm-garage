@@ -15,7 +15,7 @@ image:
   # -- Repository of the container image
   repository: dxflrs/garage
   # -- Tag of the container image
-  tag: v2.3.0
+  tag: v2.4.1
   # -- Image pull policy. Accepted values: Always, Never, IfNotPresent
   pullPolicy: IfNotPresent
 
