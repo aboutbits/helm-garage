@@ -24,6 +24,13 @@ imagePullSecrets: []
 
 # -- Garage configuration. These values are rendered into garage.toml.
 garage:
+  # -- Start Garage with `--single-node`. Garage then creates the cluster layout
+  # itself on first boot, and refuses to start once the layout version is higher
+  # than 1. Set to false when the AboutBits Garage Operator manages the layout
+  # through a GarageCluster: the operator applies new layout versions, which
+  # single-node mode does not allow. bootstrap.enabled requires true, because
+  # Garage accepts --default-bucket only in single-node mode.
+  singleNode: true
   # -- Metadata database engine. https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/#db_engine
   dbEngine: lmdb
   # -- Block size in bytes (default 1MB). https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/#block_size
