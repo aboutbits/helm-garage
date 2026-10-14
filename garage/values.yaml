@@ -9,6 +9,7 @@ image:
 imagePullSecrets: []
 
 garage:
+  singleNode: true
   dbEngine: lmdb
   blockSize: "1048576"
   compressionLevel: "1"

@@ -12,6 +12,12 @@ The default configuration for this Helm chart is defined in the [values.yaml](./
 For detailed descriptions of all the configurable parameters, refer to the provided [values.reference.yaml](./garage/values.reference.yaml) file.
 This file serves as the reference for all available settings and their default values. Do not use this for deployment.
 
+## Cluster Layout
+
+A fresh Garage node serves no S3 traffic until it has a cluster layout. By default (`garage.singleNode: true`) the chart starts Garage with `--single-node`, and Garage creates the layout itself on first boot. In this mode Garage refuses to start once the layout version is higher than 1, so nothing else may change the layout.
+
+To let the [AboutBits Garage Operator](https://github.com/aboutbits/garage-operator) manage the layout with a `GarageCluster`, set `garage.singleNode: false`. Garage then starts without a layout until the operator applies one. `bootstrap.enabled` needs single-node mode, because Garage accepts `--default-bucket` only there; create the bucket and the key with the operator's `Bucket` and `AccessKey` instead.
+
 ## Manual Installation
 
 You can pull and install the Helm chart directly from the OCI registry.

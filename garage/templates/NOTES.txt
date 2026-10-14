@@ -1,4 +1,4 @@
-Garage single-node deployment "{{ include "garage.fullname" . }}" is starting up.
+Garage deployment "{{ include "garage.fullname" . }}" is starting up.
 
 {{- if .Values.bootstrap.enabled }}
 
@@ -12,10 +12,17 @@ Access key:  (value of bootstrap.accessKey in your values)
 Secret key:  (value of bootstrap.secretKey in your values)
 {{- else }}
 
-No bucket/key is auto-created (bootstrap.enabled=false). Create buckets and
-keys yourself via the Admin API or the `garage` CLI, e.g.:
+No bucket/key is auto-created (bootstrap.enabled=false).
+{{- if .Values.garage.singleNode }}
+Garage creates its cluster layout itself on first boot (garage.singleNode=true).
+{{- else }}
+Garage starts without a cluster layout (garage.singleNode=false) and serves no
+S3 traffic until one is applied: create a GarageCluster of the AboutBits Garage
+Operator for it, or assign it by hand:
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout assign -z dc1 -c 1G <node-id>
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout apply --version 1
+{{- end }}
+Create buckets and keys yourself via the Admin API or the `garage` CLI, e.g.:
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket create <bucket-name>
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage key create <key-name>
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket allow --read --write --owner <bucket-name> --key <key-name>
