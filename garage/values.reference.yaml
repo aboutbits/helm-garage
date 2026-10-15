@@ -208,21 +208,22 @@ securityContext:
       - ALL
   readOnlyRootFilesystem: true
 
-# -- Liveness/readiness probes. Default to the admin API's /health endpoint
-# (200 only when the node can serve requests), served by the admin API.
-# If you disable the admin API, switch these to a tcpSocket check on the `s3` port.
+# -- Liveness/readiness probes. TCP checks on purpose, not the admin API's /health:
+# /health answers 503 until the node has a cluster layout. With
+# garage.singleNode=false the Pod would then never become ready, so the Service
+# would not route the operator to the admin API that applies the layout, and the
+# liveness probe would restart Garage in a loop. The health of the cluster is
+# reported by the operator's GarageCluster and S3Connection instead.
 probes:
   liveness:
-    httpGet:
-      path: /health
+    tcpSocket:
       port: admin
     initialDelaySeconds: 10
     periodSeconds: 10
     failureThreshold: 6
   readiness:
-    httpGet:
-      path: /health
-      port: admin
+    tcpSocket:
+      port: s3
     initialDelaySeconds: 5
     periodSeconds: 5
 
