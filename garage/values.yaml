@@ -105,15 +105,14 @@ securityContext:
 probes:
   liveness:
     httpGet:
-      path: /health
+      path: /metrics
       port: admin
     initialDelaySeconds: 10
     periodSeconds: 10
     failureThreshold: 6
   readiness:
-    httpGet:
-      path: /health
-      port: admin
+    tcpSocket:
+      port: s3
     initialDelaySeconds: 5
     periodSeconds: 5
 

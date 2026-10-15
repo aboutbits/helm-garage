@@ -16,7 +16,7 @@ This file serves as the reference for all available settings and their default v
 
 A fresh Garage node serves no S3 traffic until it has a cluster layout. By default (`garage.singleNode: true`) the chart starts Garage with `--single-node`, and Garage creates the layout itself on first boot. In this mode Garage refuses to start once the layout version is higher than 1, so nothing else may change the layout.
 
-To let the [AboutBits Garage Operator](https://github.com/aboutbits/garage-operator) manage the layout with a `GarageCluster`, set `garage.singleNode: false`. Garage then starts without a layout until the operator applies one. `bootstrap.enabled` needs single-node mode, because Garage accepts `--default-bucket` only there; create the bucket and the key with the operator's `Bucket` and `AccessKey` instead.
+To let the [AboutBits Garage Operator](https://github.com/aboutbits/garage-operator) manage the layout with a `GarageCluster`, set `garage.singleNode: false`. Garage then starts without a layout until the operator applies one. The probes do not use the admin API's `/health` for this reason: it answers 503 until there is a layout, so a probe on it would keep the Pod out of the Service the operator connects through. They check that Garage answers, not that the cluster can serve requests. `bootstrap.enabled` needs single-node mode, because Garage accepts `--default-bucket` only there; create the bucket and the key with the operator's `Bucket` and `AccessKey` instead.
 
 ## Manual Installation
 
