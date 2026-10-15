@@ -104,7 +104,8 @@ securityContext:
 
 probes:
   liveness:
-    tcpSocket:
+    httpGet:
+      path: /metrics
       port: admin
     initialDelaySeconds: 10
     periodSeconds: 10

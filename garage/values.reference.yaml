@@ -208,15 +208,21 @@ securityContext:
       - ALL
   readOnlyRootFilesystem: true
 
-# -- Liveness/readiness probes. TCP checks on purpose, not the admin API's /health:
-# /health answers 503 until the node has a cluster layout. With
-# garage.singleNode=false the Pod would then never become ready, so the Service
-# would not route the operator to the admin API that applies the layout, and the
-# liveness probe would restart Garage in a loop. The health of the cluster is
-# reported by the operator's GarageCluster and S3Connection instead.
+# -- Liveness/readiness probes. They check that Garage answers, not that the
+# cluster can serve requests, so they do not use the admin API's /health: it
+# answers 503 until the node has a cluster layout. With garage.singleNode=false
+# the Pod would then never become ready, so the Service would not route the
+# operator to the admin API that applies the layout, and the liveness probe would
+# restart Garage in a loop.
+# Liveness asks /metrics, which answers without a layout and without a token,
+# because the chart sets no metrics_token. Readiness only checks that the S3 port
+# accepts connections: the S3 API has no endpoint that answers 200 unauthenticated.
+# For the health of the cluster, see `garage status` or /health, or with the
+# AboutBits Garage Operator the status of the GarageCluster and S3Connection.
 probes:
   liveness:
-    tcpSocket:
+    httpGet:
+      path: /metrics
       port: admin
     initialDelaySeconds: 10
     periodSeconds: 10
