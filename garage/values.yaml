@@ -25,7 +25,6 @@ s3:
 
 admin:
   port: 3903
-  token: ""
   existingSecret:
     name: ""
     key: admin_token
@@ -33,8 +32,6 @@ admin:
 bootstrap:
   enabled: false
   defaultBucket: default-bucket
-  accessKey: ""
-  secretKey: ""
   existingSecret:
     name: ""
     accessKeyKey: default_access_key

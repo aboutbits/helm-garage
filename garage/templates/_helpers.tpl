@@ -102,20 +102,18 @@ Whether the chart generates the RPC secret and stores it in its own Secret.
 {{- end }}
 
 {{/*
-Each secret comes from at most one source: a plain value (stored in the chart's
-Secret), an existing Secret, or .Values.environment.
+Secrets are never values of this chart: they come from an existing Secret or
+from .Values.environment, and each from at most one of them. Only the generated
+RPC secret is stored in the chart's own Secret.
 */}}
 {{- define "garage.validateSecrets" -}}
 {{- if and .Values.garage.existingRpcSecret.name (include "garage.envSets" (dict "root" . "name" "RPC_SECRET")) -}}
 {{- fail "set either garage.existingRpcSecret.name or GARAGE_RPC_SECRET(_FILE) in environment, not both" -}}
 {{- end -}}
-{{- if and .Values.admin.token .Values.admin.existingSecret.name -}}
-{{- fail "set either admin.token or admin.existingSecret.name, not both" -}}
+{{- if and .Values.admin.existingSecret.name (include "garage.envSets" (dict "root" . "name" "ADMIN_TOKEN")) -}}
+{{- fail "set either admin.existingSecret.name or GARAGE_ADMIN_TOKEN(_FILE) in environment, not both" -}}
 {{- end -}}
-{{- if and (or .Values.admin.token .Values.admin.existingSecret.name) (include "garage.envSets" (dict "root" . "name" "ADMIN_TOKEN")) -}}
-{{- fail "set either admin.token / admin.existingSecret.name or GARAGE_ADMIN_TOKEN(_FILE) in environment, not both" -}}
-{{- end -}}
-{{- if and .Values.bootstrap.enabled .Values.bootstrap.existingSecret.name (or .Values.bootstrap.accessKey .Values.bootstrap.secretKey) -}}
-{{- fail "set either bootstrap.accessKey/secretKey or bootstrap.existingSecret.name, not both" -}}
+{{- if and .Values.bootstrap.enabled (not .Values.bootstrap.existingSecret.name) -}}
+{{- fail "bootstrap.existingSecret.name is required when bootstrap.enabled=true" -}}
 {{- end -}}
 {{- end }}
