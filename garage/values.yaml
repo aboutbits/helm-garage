@@ -17,7 +17,7 @@ garage:
   additionalTopLevelConfig: ""
   existingRpcSecret:
     name: ""
-    key: rpc_secret
+    key: GARAGE_RPC_SECRET
 
 s3:
   region: garage
@@ -27,15 +27,15 @@ admin:
   port: 3903
   existingSecret:
     name: ""
-    key: admin_token
+    key: GARAGE_ADMIN_TOKEN
 
 bootstrap:
   enabled: false
   defaultBucket: default-bucket
   existingSecret:
     name: ""
-    accessKeyKey: default_access_key
-    secretKeyKey: default_secret_key
+    accessKeyKey: GARAGE_DEFAULT_ACCESS_KEY
+    secretKeyKey: GARAGE_DEFAULT_SECRET_KEY
 
 service:
   type: ClusterIP

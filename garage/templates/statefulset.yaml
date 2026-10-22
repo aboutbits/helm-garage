@@ -2,7 +2,7 @@
 {{- fail "bootstrap.enabled requires garage.singleNode=true: Garage accepts --default-bucket only in single-node mode" -}}
 {{- end -}}
 {{- include "garage.validateSecrets" . -}}
-{{- $rpcFromEnvironment := include "garage.envSets" (dict "root" . "name" "RPC_SECRET") -}}
+{{- $rpcFromChart := include "garage.rpcSecretFromChart" . -}}
 {{- $rpcSecret := .Values.garage.existingRpcSecret -}}
 {{- $adminSecret := .Values.admin.existingSecret -}}
 {{- $bootstrapSecret := .Values.bootstrap.existingSecret -}}
@@ -68,9 +68,9 @@ spec:
             {{- if .Values.bootstrap.enabled }}
             - --default-bucket
             {{- end }}
-          {{- if or (not $rpcFromEnvironment) $adminSecret.name .Values.bootstrap.enabled .Values.environment }}
+          {{- if or $rpcFromChart $rpcSecret.name $adminSecret.name .Values.bootstrap.enabled .Values.environment }}
           env:
-            {{- if not $rpcFromEnvironment }}
+            {{- if or $rpcFromChart $rpcSecret.name }}
             - name: GARAGE_RPC_SECRET
               valueFrom:
                 secretKeyRef:
@@ -79,7 +79,7 @@ spec:
                   key: {{ required "garage.existingRpcSecret.key is required" $rpcSecret.key }}
                   {{- else }}
                   name: {{ include "garage.fullname" . }}
-                  key: rpc_secret
+                  key: GARAGE_RPC_SECRET
                   {{- end }}
             {{- end }}
             {{- if $adminSecret.name }}
@@ -134,8 +134,8 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: config
-          secret:
-            secretName: {{ include "garage.fullname" . }}
+          configMap:
+            name: {{ include "garage.fullname" . }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

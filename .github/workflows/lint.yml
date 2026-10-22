@@ -17,5 +17,8 @@ jobs:
         with:
           version: 4.2.3
       - name: Lint Helm chart
-        run: helm lint ${{ env.CHART_NAME }} --strict
+        run: |
+          helm lint ${{ env.CHART_NAME }} --strict
+          helm lint ${{ env.CHART_NAME }} --strict -f ${{ env.CHART_NAME }}/ci/existing-secrets-values.yaml
+          helm lint ${{ env.CHART_NAME }} --strict -f ${{ env.CHART_NAME }}/ci/file-secrets-values.yaml
         shell: bash

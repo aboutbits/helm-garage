@@ -74,23 +74,23 @@ not lose data or orphan the layout.
 {{- define "garage.rpcSecret" -}}
 {{- $existing := (lookup "v1" "Secret" .Release.Namespace (include "garage.fullname" .)) | default dict -}}
 {{- $data := $existing.data | default dict -}}
-{{- if hasKey $data "rpc_secret" -}}
-{{- index $data "rpc_secret" | b64dec -}}
+{{- if hasKey $data "GARAGE_RPC_SECRET" -}}
+{{- index $data "GARAGE_RPC_SECRET" | b64dec -}}
 {{- else -}}
 {{- sha256sum (printf "%s-rpc-%s" .Release.Name (randAlphaNum 32)) -}}
 {{- end -}}
 {{- end }}
 
 {{/*
-Whether .Values.environment sets GARAGE_<name> or GARAGE_<name>_FILE itself,
-e.g. to read a secret from a mounted file. Garage refuses to start when both the
-plain and the _FILE variable are set, so the chart then leaves that secret to
-the environment. Call with (dict "root" $ "name" "ADMIN_TOKEN").
+Whether .Values.environment sets one of the given variables itself, e.g. to
+read a secret from a mounted file. Garage refuses to start when both the plain
+and the _FILE variable are set, so the chart then leaves that secret to the
+environment. Call with
+(dict "root" $ "names" (list "GARAGE_ADMIN_TOKEN" "GARAGE_ADMIN_TOKEN_FILE")).
 */}}
 {{- define "garage.envSets" -}}
-{{- $names := list (printf "GARAGE_%s" .name) (printf "GARAGE_%s_FILE" .name) -}}
 {{- range .root.Values.environment -}}
-{{- if has .name $names }}true{{ end -}}
+{{- if has .name $.names }}true{{ end -}}
 {{- end -}}
 {{- end }}
 
@@ -98,7 +98,15 @@ the environment. Call with (dict "root" $ "name" "ADMIN_TOKEN").
 Whether the chart generates the RPC secret and stores it in its own Secret.
 */}}
 {{- define "garage.rpcSecretFromChart" -}}
-{{- if not (or .Values.garage.existingRpcSecret.name (include "garage.envSets" (dict "root" . "name" "RPC_SECRET"))) }}true{{ end -}}
+{{- if not (or .Values.garage.existingRpcSecret.name (include "garage.envSets" (dict "root" . "names" (list "GARAGE_RPC_SECRET" "GARAGE_RPC_SECRET_FILE")))) }}true{{ end -}}
+{{- end }}
+
+{{/*
+Whether Garage gets a static admin token, from an existing Secret or from
+.Values.environment.
+*/}}
+{{- define "garage.adminToken" -}}
+{{- if or .Values.admin.existingSecret.name (include "garage.envSets" (dict "root" . "names" (list "GARAGE_ADMIN_TOKEN" "GARAGE_ADMIN_TOKEN_FILE"))) }}true{{ end -}}
 {{- end }}
 
 {{/*
@@ -107,10 +115,10 @@ from .Values.environment, and each from at most one of them. Only the generated
 RPC secret is stored in the chart's own Secret.
 */}}
 {{- define "garage.validateSecrets" -}}
-{{- if and .Values.garage.existingRpcSecret.name (include "garage.envSets" (dict "root" . "name" "RPC_SECRET")) -}}
+{{- if and .Values.garage.existingRpcSecret.name (include "garage.envSets" (dict "root" . "names" (list "GARAGE_RPC_SECRET" "GARAGE_RPC_SECRET_FILE"))) -}}
 {{- fail "set either garage.existingRpcSecret.name or GARAGE_RPC_SECRET(_FILE) in environment, not both" -}}
 {{- end -}}
-{{- if and .Values.admin.existingSecret.name (include "garage.envSets" (dict "root" . "name" "ADMIN_TOKEN")) -}}
+{{- if and .Values.admin.existingSecret.name (include "garage.envSets" (dict "root" . "names" (list "GARAGE_ADMIN_TOKEN" "GARAGE_ADMIN_TOKEN_FILE"))) -}}
 {{- fail "set either admin.existingSecret.name or GARAGE_ADMIN_TOKEN(_FILE) in environment, not both" -}}
 {{- end -}}
 {{- if and .Values.bootstrap.enabled (not .Values.bootstrap.existingSecret.name) -}}
