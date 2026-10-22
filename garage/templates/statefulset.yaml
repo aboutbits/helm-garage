@@ -1,6 +1,12 @@
 {{- if and .Values.bootstrap.enabled (not .Values.garage.singleNode) -}}
 {{- fail "bootstrap.enabled requires garage.singleNode=true: Garage accepts --default-bucket only in single-node mode" -}}
 {{- end -}}
+{{- include "garage.validateSecrets" . -}}
+{{- $secretName := include "garage.fullname" . -}}
+{{- $rpcFromEnvironment := include "garage.envSets" (dict "root" . "name" "RPC_SECRET") -}}
+{{- $rpcSecret := .Values.garage.existingRpcSecret -}}
+{{- $adminSecret := .Values.admin.existingSecret -}}
+{{- $bootstrapSecret := .Values.bootstrap.existingSecret -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -63,19 +69,53 @@ spec:
             {{- if .Values.bootstrap.enabled }}
             - --default-bucket
             {{- end }}
-          {{- if or .Values.bootstrap.enabled .Values.environment }}
+          {{- if or (not $rpcFromEnvironment) .Values.admin.token $adminSecret.name .Values.bootstrap.enabled .Values.environment }}
           env:
+            {{- if not $rpcFromEnvironment }}
+            - name: GARAGE_RPC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  {{- if $rpcSecret.name }}
+                  name: {{ $rpcSecret.name }}
+                  key: {{ required "garage.existingRpcSecret.key is required" $rpcSecret.key }}
+                  {{- else }}
+                  name: {{ $secretName }}
+                  key: rpc_secret
+                  {{- end }}
+            {{- end }}
+            {{- if or .Values.admin.token $adminSecret.name }}
+            - name: GARAGE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  {{- if $adminSecret.name }}
+                  name: {{ $adminSecret.name }}
+                  key: {{ required "admin.existingSecret.key is required" $adminSecret.key }}
+                  {{- else }}
+                  name: {{ $secretName }}
+                  key: admin_token
+                  {{- end }}
+            {{- end }}
             {{- if .Values.bootstrap.enabled }}
             - name: GARAGE_DEFAULT_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "garage.fullname" . }}
+                  {{- if $bootstrapSecret.name }}
+                  name: {{ $bootstrapSecret.name }}
+                  key: {{ required "bootstrap.existingSecret.accessKeyKey is required" $bootstrapSecret.accessKeyKey }}
+                  {{- else }}
+                  name: {{ $secretName }}
                   key: default_access_key
+                  {{- end }}
             - name: GARAGE_DEFAULT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "garage.fullname" . }}
+                  {{- if $bootstrapSecret.name }}
+                  name: {{ $bootstrapSecret.name }}
+                  key: {{ required "bootstrap.existingSecret.secretKeyKey is required" $bootstrapSecret.secretKeyKey }}
+                  {{- else }}
+                  name: {{ $secretName }}
                   key: default_secret_key
+                  {{- end }}
             - name: GARAGE_DEFAULT_BUCKET
               value: {{ .Values.bootstrap.defaultBucket | quote }}
             {{- end }}

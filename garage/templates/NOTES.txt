@@ -8,8 +8,15 @@ second bucket or rotating the default key later means calling the Admin API
 directly, not editing values.yaml.
 
 Bucket:      {{ .Values.bootstrap.defaultBucket }}
+{{- with .Values.bootstrap.existingSecret }}
+{{- if .name }}
+Access key:  (key {{ .accessKeyKey }} of Secret {{ .name }})
+Secret key:  (key {{ .secretKeyKey }} of Secret {{ .name }})
+{{- else }}
 Access key:  (value of bootstrap.accessKey in your values)
 Secret key:  (value of bootstrap.secretKey in your values)
+{{- end }}
+{{- end }}
 {{- else }}
 
 No bucket/key is auto-created (bootstrap.enabled=false).
