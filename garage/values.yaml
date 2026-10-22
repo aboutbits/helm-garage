@@ -15,6 +15,9 @@ garage:
   compressionLevel: "1"
   metadataAutoSnapshotInterval: ""
   additionalTopLevelConfig: ""
+  existingRpcSecret:
+    name: ""
+    key: GARAGE_RPC_SECRET
 
 s3:
   region: garage
@@ -22,13 +25,17 @@ s3:
 
 admin:
   port: 3903
-  token: ""
+  existingSecret:
+    name: ""
+    key: GARAGE_ADMIN_TOKEN
 
 bootstrap:
   enabled: false
   defaultBucket: default-bucket
-  accessKey: ""
-  secretKey: ""
+  existingSecret:
+    name: ""
+    accessKeyKey: GARAGE_DEFAULT_ACCESS_KEY
+    secretKeyKey: GARAGE_DEFAULT_SECRET_KEY
 
 service:
   type: ClusterIP
@@ -116,7 +123,7 @@ probes:
     initialDelaySeconds: 5
     periodSeconds: 5
 
-environment: {}
+environment: []
 
 extraVolumes: []
 extraVolumeMounts: []

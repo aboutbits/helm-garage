@@ -16,8 +16,9 @@ jobs:
         uses: azure/setup-helm@v5
         with:
           version: 4.2.3
-      # admin.token is a required value; a dummy is passed so all templates
-      # render during linting instead of being skipped with a warning.
       - name: Lint Helm chart
-        run: helm lint ${{ env.CHART_NAME }} --strict --set admin.token=ci-lint-only
+        run: |
+          helm lint ${{ env.CHART_NAME }} --strict
+          helm lint ${{ env.CHART_NAME }} --strict -f ${{ env.CHART_NAME }}/ci/existing-secrets-values.yaml
+          helm lint ${{ env.CHART_NAME }} --strict -f ${{ env.CHART_NAME }}/ci/file-secrets-values.yaml
         shell: bash

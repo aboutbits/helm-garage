@@ -3,13 +3,16 @@ Garage deployment "{{ include "garage.fullname" . }}" is starting up.
 {{- if .Values.bootstrap.enabled }}
 
 It bootstraps itself on first boot via `garage server --single-node --default-bucket`
-(no manual layout/bucket setup needed). This is a one-time bootstrap: adding a
-second bucket or rotating the default key later means calling the Admin API
-directly, not editing values.yaml.
+(no manual layout/bucket setup needed). Adding a second bucket goes through the
+Admin API. Never change or delete the default key afterwards, neither in the
+Secret of bootstrap.existingSecret nor through the Admin API: Garage checks it
+at every start and refuses to start when it differs or was deleted.
 
 Bucket:      {{ .Values.bootstrap.defaultBucket }}
-Access key:  (value of bootstrap.accessKey in your values)
-Secret key:  (value of bootstrap.secretKey in your values)
+{{- with .Values.bootstrap.existingSecret }}
+Access key:  (key {{ .accessKeyKey }} of Secret {{ .name }})
+Secret key:  (key {{ .secretKeyKey }} of Secret {{ .name }})
+{{- end }}
 {{- else }}
 
 No bucket/key is auto-created (bootstrap.enabled=false).
@@ -21,6 +24,11 @@ S3 traffic until one is applied: create a GarageCluster of the AboutBits Garage
 Operator for it, or assign it by hand:
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout assign -z dc1 -c 1G <node-id>
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage layout apply --version 1
+{{- if not (include "garage.adminToken" .) }}
+
+WARNING: no static admin token is set. The Garage Operator needs one in the
+adminSecretRef of its GarageCluster to apply the layout: set admin.existingSecret.
+{{- end }}
 {{- end }}
 Create buckets and keys yourself via the Admin API or the `garage` CLI, e.g.:
   kubectl -n {{ .Release.Namespace }} exec -it {{ include "garage.fullname" . }}-0 -- /garage bucket create <bucket-name>
